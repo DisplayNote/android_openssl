@@ -14,6 +14,11 @@ set -eo pipefail
 [ -n "$OUTPUT_ROOT" ] || OUTPUT_ROOT="$(pwd)"
 [ -n "$BUILD_DIR" ] || BUILD_DIR="$(pwd)/build"
 
+# Make SSL_SOURCE_DIR absolute: it is used after changing into the build directories.
+if [ -n "$SSL_SOURCE_DIR" ]; then
+    SSL_SOURCE_DIR="$(cd "$SSL_SOURCE_DIR" && pwd)" || { echo "SSL_SOURCE_DIR not found"; exit 1; }
+fi
+
 # Set Android NDK path prefix under the Android SDK
 if [ -z "$NDK_ROOT_PREFIX" ]; then
     if [[ "$(uname)" == "Darwin" ]]; then
@@ -246,8 +251,10 @@ for build_type in "${build_types[@]}"; do
             strip_libs
             copy_build_artefacts ${output_dir}
 
-            # Copy the include dir only once since since it's the same for all abis
-            if [ ! -d "$output_dir/../include" ]; then
+            # Refresh the include dir once per version/build type since it's the same for all abis;
+            # an existing checkout may still hold headers from an older OpenSSL release.
+            if [ "$arch" = "${architectures[0]}" ]; then
+                rm -rf "$output_dir/../include"
                 cp -a include "$output_dir/../" || exit 1
 
                 # Clean include folder
