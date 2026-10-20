@@ -5,11 +5,19 @@
 ## set BUILD_DIR and OUTPUT_ROOT variables to use custom build and output paths.
 ## Set NDK_ROOT_PREFIX to use custom Android NDK root path that contains various
 ## NDK versions.
+## Set SSL_VERSIONS (space separated) to build only some of the versions below.
+## Set SSL_SOURCE_DIR to a folder holding already downloaded and verified
+## openssl-<version>.tar.gz files to skip the download.
 
 set -eo pipefail
 
 [ -n "$OUTPUT_ROOT" ] || OUTPUT_ROOT="$(pwd)"
 [ -n "$BUILD_DIR" ] || BUILD_DIR="$(pwd)/build"
+
+# Make SSL_SOURCE_DIR absolute: it is used after changing into the build directories.
+if [ -n "$SSL_SOURCE_DIR" ]; then
+    SSL_SOURCE_DIR="$(cd "$SSL_SOURCE_DIR" && pwd)" || { echo "SSL_SOURCE_DIR not found"; exit 1; }
+fi
 
 # Set Android NDK path prefix under the Android SDK
 if [ -z "$NDK_ROOT_PREFIX" ]; then
@@ -20,7 +28,8 @@ if [ -z "$NDK_ROOT_PREFIX" ]; then
     fi
 fi
 
-ssl_versions=("1.1.1w" "3.1.8")
+ssl_versions=("1.1.1w" "3.5.9")
+[ -n "$SSL_VERSIONS" ] && read -r -a ssl_versions <<< "$SSL_VERSIONS"
 architectures=("arm64" "arm" "x86_64" "x86")
 build_types=('' 'no-asm')
 
@@ -61,7 +70,8 @@ get_ssl_ndk_version() {
         echo "21.4.7075529"
         ;;
     3.*)
-        echo "25.2.9519653"
+        # Same NDK as the Montage receiver (android/template/build.gradle)
+        echo "28.2.13676358"
         ;;
     *)
         echo $1
@@ -74,8 +84,14 @@ download_ssl_version() {
     download_dir=$2
 
     ssl_filename="openssl-$ssl_version.tar.gz"
+    if [ -n "$SSL_SOURCE_DIR" ] && [ -f "$SSL_SOURCE_DIR/$ssl_filename" ]; then
+        echo "Using local OpenSSL $SSL_SOURCE_DIR/$ssl_filename"
+        cp "$SSL_SOURCE_DIR/$ssl_filename" "$download_dir/" || exit 1
+        return
+    fi
+
     echo "Downloading OpenSSL $ssl_filename"
-    if [ ! -f "$ssl_filename" ]; then
+    if [ ! -f "$download_dir/$ssl_filename" ]; then
         curl -sfL -o "$download_dir/$ssl_filename" "https://www.openssl.org/source/$ssl_filename" \
             || (echo "Downloading sources failed!"; exit 1)
     fi
@@ -177,7 +193,7 @@ build_ssl() {
     log_file=$1
 
     echo "Building..."
-    make -j$(nproc) SHLIB_VERSION_NUMBER= build_libs 2>&1 1>>${log_file} \
+    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu) SHLIB_VERSION_NUMBER= build_libs 2>&1 1>>${log_file} \
         | tee -a ${log_file} || exit 1
 }
 
@@ -235,8 +251,10 @@ for build_type in "${build_types[@]}"; do
             strip_libs
             copy_build_artefacts ${output_dir}
 
-            # Copy the include dir only once since since it's the same for all abis
-            if [ ! -d "$output_dir/../include" ]; then
+            # Refresh the include dir once per version/build type since it's the same for all abis;
+            # an existing checkout may still hold headers from an older OpenSSL release.
+            if [ "$arch" = "${architectures[0]}" ]; then
+                rm -rf "$output_dir/../include"
                 cp -a include "$output_dir/../" || exit 1
 
                 # Clean include folder
