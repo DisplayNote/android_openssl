@@ -17,7 +17,13 @@ class OpenSSLConan(ConanFile):
         pass
 
     def package_info(self):
-        self.cpp_info.libs = tools.collect_libs(self)
+        # Link the shared libs only (libssl_3.so / libcrypto_3.so, the same files Qt loads).
+        # collect_libs() also lists libssl.a / libcrypto.a, and "-lcrypto" resolved to the
+        # static archive, embedding a second OpenSSL copy in every consumer.
+        lib_dir = os.path.join(self.package_folder, "lib")
+        shared = [lib for lib in tools.collect_libs(self)
+                  if os.path.isfile(os.path.join(lib_dir, "lib%s.so" % lib))]
+        self.cpp_info.libs = sorted(shared, key=lambda lib: not lib.startswith("ssl"))
 
     def package(self):
         source_path = os.path.join(str(self.settings.os), str(self.settings.build_type))
