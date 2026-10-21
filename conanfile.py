@@ -35,6 +35,7 @@ class OpenSSLConan(ConanFile):
         self.copy("*.so", dst="lib", src=os.path.join(source_path, "lib"))
         self.copy("*.a", dst="lib", src=os.path.join(source_path, "lib"))
         # Windows layout produced by build_ssl_windows.ps1
+        self.copy("openssl/applink.c", dst="include", src=os.path.join(source_path, "include"))
         self.copy("*.lib", dst="lib", src=os.path.join(source_path, "lib"))
         self.copy("*.dll", dst="bin", src=os.path.join(source_path, "bin"))
         self.copy("*.pdb", dst="bin", src=os.path.join(source_path, "bin"))

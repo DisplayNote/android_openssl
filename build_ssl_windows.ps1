@@ -144,6 +144,9 @@ function Invoke-Build([string] $vcvars, [string] $tarball, [string] $buildType)
     New-Item -ItemType Directory -Force (Join-Path $outDir "include\openssl"), (Join-Path $outDir "lib"), (Join-Path $outDir "bin") | Out-Null
 
     Copy-Item (Join-Path $srcDir "include\openssl\*.h") (Join-Path $outDir "include\openssl")
+    # The build defines OPENSSL_USE_APPLINK: an MSVC app that passes FILE* to the DLL
+    # (e.g. ERR_print_errors_fp) must compile <openssl/applink.c>, as install_sw ships it.
+    Copy-Item (Join-Path $srcDir "ms\applink.c") (Join-Path $outDir "include\openssl")
     Copy-Item (Join-Path $srcDir "libcrypto.lib"), (Join-Path $srcDir "libssl.lib") (Join-Path $outDir "lib")
     foreach ($lib in @("libcrypto-3-x64", "libssl-3-x64"))
     {
