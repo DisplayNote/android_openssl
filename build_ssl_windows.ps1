@@ -101,23 +101,36 @@ function Invoke-Build([string] $vcvars, [string] $tarball, [string] $buildType)
     if ($LASTEXITCODE -ne 0) { throw "Extracting $tarball failed" }
     $srcDir = Join-Path $workDir "openssl-$Version"
 
-    $configureArgs = @("VC-WIN64A", "shared", "no-tests", "--prefix=`"$Prefix`"", "--openssldir=`"$OpenSslDir`"")
+    $configureArgs = @("VC-WIN64A", "shared", "no-tests", "`"--prefix=%DN_OSSL_PREFIX%`"", "`"--openssldir=%DN_OSSL_DIR%`"")
     if ($buildType -eq "Debug") { $configureArgs += "--debug" }
     if ($NoAsm) { $configureArgs += "no-asm" }
 
     # Run configure + build inside one cmd session so the vcvars environment applies.
+    # Paths reach the batch file through inherited environment variables, so the file itself
+    # stays ASCII and checkouts under non-ASCII paths (e.g. a user folder with accents) keep working.
     $logFile = Join-Path $workDir "build_$buildType.log"
     $script = Join-Path $workDir "build.cmd"
     @(
         "@echo off",
-        "call `"$vcvars`" -vcvars_ver=$VcvarsVer || exit /b 1",
-        "cd /d `"$srcDir`" || exit /b 1",
+        "call `"%DN_OSSL_VCVARS%`" -vcvars_ver=$VcvarsVer || exit /b 1",
+        "cd /d `"%DN_OSSL_SRC%`" || exit /b 1",
         "perl Configure $($configureArgs -join ' ') || exit /b 1",
         "nmake build_libs || exit /b 1"
     ) | Set-Content -Encoding ascii $script
 
+    $env:DN_OSSL_VCVARS = $vcvars
+    $env:DN_OSSL_SRC    = $srcDir
+    $env:DN_OSSL_PREFIX = $Prefix
+    $env:DN_OSSL_DIR    = $OpenSslDir
     Write-Host "Building OpenSSL $Version $buildType (log: $logFile)"
-    & cmd /c "`"$script`" > `"$logFile`" 2>&1"
+    try
+    {
+        & cmd /c "`"$script`" > `"$logFile`" 2>&1"
+    }
+    finally
+    {
+        Remove-Item Env:DN_OSSL_VCVARS, Env:DN_OSSL_SRC, Env:DN_OSSL_PREFIX, Env:DN_OSSL_DIR -ErrorAction SilentlyContinue
+    }
     if ($LASTEXITCODE -ne 0)
     {
         Get-Content $logFile -Tail 40
