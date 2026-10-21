@@ -17,6 +17,10 @@ class OpenSSLConan(ConanFile):
         pass
 
     def package_info(self):
+        if self.settings.os == "Windows":
+            # Import libs of libssl-3-x64.dll / libcrypto-3-x64.dll (bin/), the same DLLs Qt loads.
+            self.cpp_info.libs = ["libssl", "libcrypto"]
+            return
         # Link the shared libs only (libssl_3.so / libcrypto_3.so, the same files Qt loads).
         # collect_libs() also lists libssl.a / libcrypto.a, and "-lcrypto" resolved to the
         # static archive, embedding a second OpenSSL copy in every consumer.
@@ -30,6 +34,11 @@ class OpenSSLConan(ConanFile):
         self.copy("*.h", dst="include", src=os.path.join(source_path, "include"))
         self.copy("*.so", dst="lib", src=os.path.join(source_path, "lib"))
         self.copy("*.a", dst="lib", src=os.path.join(source_path, "lib"))
+        # Windows layout produced by build_ssl_windows.ps1
+        self.copy("openssl/applink.c", dst="include", src=os.path.join(source_path, "include"))
+        self.copy("*.lib", dst="lib", src=os.path.join(source_path, "lib"))
+        self.copy("*.dll", dst="bin", src=os.path.join(source_path, "bin"))
+        self.copy("*.pdb", dst="bin", src=os.path.join(source_path, "bin"))
 
     def imports(self):
         dest = os.getenv("CONAN_IMPORT_DEST_PATH", "bin")

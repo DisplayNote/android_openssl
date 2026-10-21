@@ -58,3 +58,22 @@ it.
 ### Build Prerequisites
 
 The build script was tested against `bash` and `zsh` on Linux and macOS.
+
+## Windows (Conan package)
+
+`build_ssl_windows.ps1` builds the OpenSSL shared libraries for Windows x86_64
+with MSVC and lays them out as `Windows/<Release|Debug>/{include,lib,bin}`,
+which `conanfile.py` packages (`libssl-3-x64.dll`, `libcrypto-3-x64.dll`, their
+`.pdb`s and the `libssl.lib` / `libcrypto.lib` import libraries).
+
+Prerequisites: Visual Studio 2022 or newer with the MSVC 14.40 toolset (the one
+CI uses; override with `-VcvarsVer`), Strawberry Perl and NASM on `PATH`.
+
+```powershell
+.\build_ssl_windows.ps1                       # OpenSSL 3.5.9, Release + Debug
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr msvc19.x86_64.release
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr msvc19.x86_64.debug
+```
+
+Export with the same `msvc19.x86_64.*` profiles the consumers (Montage, dnrtc)
+use, so their binary lookup finds these packages.
