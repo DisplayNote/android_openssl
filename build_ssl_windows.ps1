@@ -64,8 +64,12 @@ function Get-Tarball([string] $downloadDir)
 
     if ($SourceDir -and (Test-Path (Join-Path $SourceDir $fileName)))
     {
-        Write-Host "Using local OpenSSL $(Join-Path $SourceDir $fileName)"
-        Copy-Item (Join-Path $SourceDir $fileName) $tarball
+        $localTarball = (Resolve-Path (Join-Path $SourceDir $fileName)).Path
+        Write-Host "Using local OpenSSL $localTarball"
+        if ($localTarball -ne (Resolve-Path -LiteralPath $downloadDir).Path + "\$fileName")
+        {
+            Copy-Item $localTarball $tarball
+        }
     }
     else
     {
