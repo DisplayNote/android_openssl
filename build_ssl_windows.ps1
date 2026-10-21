@@ -37,11 +37,22 @@ function Get-VcvarsPath
 {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
     if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found; install Visual Studio 2022 or newer" }
-    $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-    if (-not $vsPath) { throw "No Visual Studio installation with the x64 C++ tools found" }
-    $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
-    if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found under $vsPath" }
-    return $vcvars
+    $vsPaths = @(& $vswhere -all -sort -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
+    if (-not $vsPaths) { throw "No Visual Studio installation with the x64 C++ tools found" }
+
+    # -latest could pick a newer Visual Studio that lacks the requested toolset, so use the
+    # newest installation that actually has VC\Tools\MSVC\<VcvarsVer>.*
+    foreach ($vsPath in $vsPaths)
+    {
+        $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+        $toolsets = Get-ChildItem (Join-Path $vsPath "VC\Tools\MSVC") -Directory -Filter "$VcvarsVer*" -ErrorAction SilentlyContinue
+        if ($toolsets -and (Test-Path $vcvars))
+        {
+            Write-Host "Using MSVC $($toolsets[-1].Name) from $vsPath"
+            return $vcvars
+        }
+    }
+    throw "No Visual Studio installation has the MSVC $VcvarsVer toolset (checked: $($vsPaths -join ', ')); install it or pass -VcvarsVer"
 }
 
 function Assert-Prerequisites
