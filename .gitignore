@@ -5,3 +5,5 @@ build/
 Windows/
 # build_ssl_macos.sh output, published to the dn Conan remote instead
 Macos/
+# build_ssl_ios.sh output, published to the dn Conan remote instead
+iOS/
