@@ -100,3 +100,26 @@ conan export-pkg . OpenSSL/3.5.9@dn/stable -pr macos.arm64.debug
 
 Export with the same `macos.<arch>.*` profiles the consumers (Montage, dnrtc)
 use, so their binary lookup finds these packages.
+
+## iOS (Conan package)
+
+`build_ssl_ios.sh` builds the OpenSSL static libraries for iOS arm64 (device)
+with Xcode and lays them out as `iOS/<Release|Debug>/{include,lib}`, which
+`conanfile.py` packages (`libssl.a`, `libcrypto.a` and the headers). The
+package declares no libs to link: `libwebrtc.a` already carries BoringSSL with
+the same symbol names, so consumers compile against these headers and every
+crypto symbol resolves to BoringSSL. Qt for iOS uses Secure Transport, not
+OpenSSL.
+
+Prerequisites: macOS with Xcode (the iphoneos SDK) and perl. The minimum iOS
+version defaults to 16.0, the one Qt 6.8 targets (override with
+`IOS_MIN_VERSION`).
+
+```bash
+./build_ssl_ios.sh                            # OpenSSL 3.5.9, Release + Debug
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr ios.arm64.release
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr ios.arm64.debug
+```
+
+Export with the same `ios.arm64.*` profiles the consumers (Montage, dnrtc,
+jwt-cpp) use, so their binary lookup finds these packages.
