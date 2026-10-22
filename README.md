@@ -77,3 +77,26 @@ conan export-pkg . OpenSSL/3.5.9@dn/stable -pr msvc19.x86_64.debug
 
 Export with the same `msvc19.x86_64.*` profiles the consumers (Montage, dnrtc)
 use, so their binary lookup finds these packages.
+
+## macOS (Conan package)
+
+`build_ssl_macos.sh` builds the OpenSSL shared libraries for macOS x86_64 and
+arm64 (x86_64 is cross-compiled on Apple Silicon) and lays them out as
+`Macos/<x86_64|armv8>/<Release|Debug>/{include,lib}`, one Conan package per
+architecture, which `conanfile.py` packages (`libssl.3.dylib`,
+`libcrypto.3.dylib` and their unversioned symlinks). The dylibs use `@rpath`
+install names, so an app finds them in `Contents/Frameworks`, and target
+macOS 12.0, the Qt 6.8 floor.
+
+Prerequisites: Xcode command line tools and perl.
+
+```bash
+./build_ssl_macos.sh                          # OpenSSL 3.5.9, x86_64 + arm64, Release + Debug
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr macos.x86_64.release
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr macos.x86_64.debug
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr macos.arm64.release
+conan export-pkg . OpenSSL/3.5.9@dn/stable -pr macos.arm64.debug
+```
+
+Export with the same `macos.<arch>.*` profiles the consumers (Montage, dnrtc)
+use, so their binary lookup finds these packages.

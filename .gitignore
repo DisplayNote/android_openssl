@@ -3,3 +3,5 @@ build/
 *.user
 # build_ssl_windows.ps1 output, published to the dn Conan remote instead
 Windows/
+# build_ssl_macos.sh output, published to the dn Conan remote instead
+Macos/
