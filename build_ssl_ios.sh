@@ -41,9 +41,12 @@ get_tarball() {
 
     if [ -n "$SSL_SOURCE_DIR" ] && [ -f "$SSL_SOURCE_DIR/$ssl_filename" ]; then
         echo "Using local OpenSSL $SSL_SOURCE_DIR/$ssl_filename"
-        if [ "$SSL_SOURCE_DIR" != "$BUILD_DIR" ]; then
+        # SSL_SOURCE_DIR may be BUILD_DIR itself, possibly through another path (e.g. a symlink)
+        if [ ! "$SSL_SOURCE_DIR/$ssl_filename" -ef "$tarball" ]; then
             cp "$SSL_SOURCE_DIR/$ssl_filename" "$tarball"
-            [ -f "$SSL_SOURCE_DIR/$ssl_filename.sha256" ] && cp "$SSL_SOURCE_DIR/$ssl_filename.sha256" "$tarball.sha256"
+            if [ -f "$SSL_SOURCE_DIR/$ssl_filename.sha256" ]; then
+                cp "$SSL_SOURCE_DIR/$ssl_filename.sha256" "$tarball.sha256"
+            fi
         fi
     else
         echo "Downloading OpenSSL $ssl_filename"
