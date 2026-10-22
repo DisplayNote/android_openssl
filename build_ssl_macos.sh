@@ -63,7 +63,10 @@ fetch_tarball() {
 
     if [ -n "$SSL_SOURCE_DIR" ] && [ -f "$SSL_SOURCE_DIR/$file_name" ]; then
         echo "Using local OpenSSL $SSL_SOURCE_DIR/$file_name"
-        cp "$SSL_SOURCE_DIR/$file_name" "$TARBALL"
+        # SSL_SOURCE_DIR may be BUILD_DIR itself (e.g. a rerun on the cached tarball)
+        if [ ! "$SSL_SOURCE_DIR/$file_name" -ef "$TARBALL" ]; then
+            cp "$SSL_SOURCE_DIR/$file_name" "$TARBALL"
+        fi
     else
         echo "Downloading OpenSSL $file_name"
         curl -sfL -o "$TARBALL" "https://www.openssl.org/source/$file_name" \
